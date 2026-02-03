@@ -82,7 +82,8 @@
             z-index: 1000;
             background: #0b0f1a;
             overflow-y: auto;
-            padding: 20px;
+            /* Tối ưu khoảng cách tai thỏ cho toàn bộ overlay */
+            padding: env(safe-area-inset-top) 20px env(safe-area-inset-bottom) 20px;
         }
         .input-field { 
             background: #161d2f; 
@@ -245,10 +246,11 @@
 
         <!-- Giao diện chính của Tool -->
         <div id="main-app" class="hidden max-w-6xl mx-auto pb-24">
-            <header class="mb-8 flex flex-col sm:flex-row justify-between items-center gap-4">
+            <!-- Header được thêm padding top để tránh tai thỏ -->
+            <header class="mb-8 flex flex-col sm:flex-row justify-between items-center gap-4 pt-4">
                 <div class="flex items-center gap-4">
                     <button onclick="toggleDCATool(false)" class="bg-slate-800 p-2 rounded-lg text-slate-400 active:scale-90">◀</button>
-                    <h1 class="text-3xl font-black italic">BTC <span class="text-orange-500 italic uppercase">DCA TRACKER</span></h1>
+                    <h1 class="text-2xl sm:text-3xl font-black italic">BTC <span class="text-orange-500 italic uppercase">DCA TRACKER</span></h1>
                 </div>
                 <div class="flex gap-2">
                     <button id="undo-btn" onclick="confirmAction('undo')" class="bg-slate-800 text-slate-400 px-4 py-2 rounded-xl text-xs font-black border border-slate-700" disabled>QUAY LẠI (0)</button>
@@ -323,7 +325,7 @@
         <div class="glass-card w-full max-w-xs p-6 border-t-4 border-red-500 text-center space-y-4">
             <div class="flex justify-center">
                 <div class="w-12 h-12 rounded-full bg-red-500/20 flex items-center justify-center text-red-500 mb-2">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
                 </div>
             </div>
             <h2 class="text-lg font-black uppercase" id="confirm-title">XÁC NHẬN</h2>
@@ -512,7 +514,6 @@
 
             let entry = { id: Date.now(), date: dateInput.value, type };
             
-            // Bổ sung kiểm tra dữ liệu trống
             if (type === 'deposit') {
                 const vndInput = document.getElementById('deposit-vnd');
                 const usdtInput = document.getElementById('deposit-usdt');
@@ -617,5 +618,4 @@
         };
     </script>
 </body>
-
 </html>
