@@ -1,0 +1,6 @@
+{
+  "appId": "com.btcmanager.app",
+  "appName": "BTC Manager",
+  "webDir": "www",
+  "bundledWebRuntime": false
+}
