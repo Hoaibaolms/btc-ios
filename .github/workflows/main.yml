@@ -1,0 +1,42 @@
+name: Build IPA for TrollStore
+on: [push]
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18
+      
+      - name: Setup Environment
+        run: |
+          npm install @capacitor/cli @capacitor/core @capacitor/ios
+          npx cap init "BTC Manager" com.btcmanager.app --web-dir www
+          npx cap add ios
+          
+      - name: Build Xcode Project (Bypass Signing)
+        run: |
+          npx cap copy ios
+          # Lệnh build quan trọng: Ép buộc không ký tên (CODE_SIGNING_ALLOWED=NO)
+          xcodebuild -workspace ios/App/App.xcworkspace \
+            -scheme App \
+            -configuration Debug \
+            -sdk iphoneos \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            AD_HOC_CODE_SIGNING_ALLOWED=YES
+          
+      - name: Create IPA Package
+        run: |
+          mkdir -p Payload
+          cp -r build/Build/Products/Debug-iphoneos/App.app Payload/
+          zip -r BTC_Manager.ipa Payload
+          
+      - name: Export File IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: App-TrollStore
+          path: BTC_Manager.ipa
