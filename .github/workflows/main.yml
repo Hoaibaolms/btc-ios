@@ -9,17 +9,17 @@ jobs:
         with:
           node-version: 18
       
-      - name: Setup Capacitor & iOS
+      - name: Setup Environment
         run: |
           npm install @capacitor/cli @capacitor/core @capacitor/ios
-          # Tự động tạo cấu hình nếu chưa có
-          npx cap init "BTC Manager" com.btcmanager.app --web-dir www --confirm
+          # Khởi tạo Capacitor mà không cần lệnh confirm lỗi
+          npx cap init "BTC Manager" com.btcmanager.app --web-dir www
           npx cap add ios
           
       - name: Build Xcode Project
         run: |
           npx cap copy ios
-          # Build ở chế độ Debug để phù hợp với TrollStore
+          # Build ở chế độ Debug để cài trực tiếp qua TrollStore
           xcodebuild -workspace ios/App/App.xcworkspace -scheme App -configuration Debug -sdk iphoneos -derivedDataPath build
           
       - name: Create IPA Package
