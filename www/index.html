@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>BTC Manager</title>
+    
+    <!-- Cấu hình PWA & Home Screen Icon -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="BTC Manager">
+    
+    <!-- Cập nhật link logo mới từ iBB -->
+    <link rel="apple-touch-icon" href="https://i.ibb.co/RpkjhzC7/Gemini-Generated-Image-mxy42umxy42umxy4.png">
+    <link rel="icon" type="image/png" href="https://i.ibb.co/RpkjhzC7/Gemini-Generated-Image-mxy42umxy42umxy4.png">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+        
+        body { 
+            background-color: #0b0f1a; 
+            color: #f8fafc; 
+            font-family: 'Inter', sans-serif; 
+            min-height: 100vh;
+            display: flex;
+            align-items: center; 
+            justify-content: center; 
+            padding-top: env(safe-area-inset-top);
+            padding-bottom: env(safe-area-inset-bottom);
+        }
+        
+        .glass-card { 
+            background: rgba(23, 32, 53, 0.8); 
+            backdrop-filter: blur(20px); 
+            border: 1px solid rgba(255, 255, 255, 0.1); 
+            border-radius: 24px;
+        }
+
+        .stat-label {
+            font-size: 11px;
+            font-weight: 800;
+            text-transform: uppercase;
+            color: #64748b;
+            letter-spacing: 1.2px;
+            margin-bottom: 4px;
+        }
+
+        .stat-value-giant {
+            font-size: clamp(1.6rem, 7vw, 2.2rem);
+            font-weight: 900;
+            line-height: 1;
+            letter-spacing: -1px;
+        }
+
+        .stat-value-large {
+            font-size: clamp(1.2rem, 5vw, 1.6rem);
+            font-weight: 800;
+            line-height: 1;
+        }
+
+        .divider {
+            width: 1px;
+            background: rgba(255, 255, 255, 0.1);
+            height: 40px;
+        }
+
+        * { touch-action: manipulation; }
+
+        .skull-float {
+            animation: floating 3s ease-in-out infinite;
+        }
+        @keyframes floating {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-5px); }
+        }
+
+        #dca-tool-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 1000;
+            background: #0b0f1a;
+            overflow-y: auto;
+            /* Tối ưu khoảng cách tai thỏ cho toàn bộ overlay */
+            padding: env(safe-area-inset-top) 20px env(safe-area-inset-bottom) 20px;
+        }
+        .input-field { 
+            background: #161d2f; 
+            border: 1px solid #2d3748; 
+            border-radius: 12px; 
+            padding: 12px; 
+            width: 100%; 
+            outline: none; 
+            font-size: 16px; 
+            color: #fff;
+        }
+        .btn-primary { 
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            color: white;
+            font-weight: 900;
+            text-transform: uppercase;
+        }
+        #toast {
+            position: fixed; bottom: 40px; left: 50%; transform: translateX(-50%) translateY(100px);
+            opacity: 0; transition: all 0.5s; z-index: 2000;
+        }
+        #toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+        .checkbox-container { display: flex; align-items: center; font-size: 13px; color: #94a3b8; }
+        .checkbox-container input { display: none; }
+        .checkmark {
+            height: 18px; width: 18px; background-color: #161d2f; border: 1px solid #2d3748;
+            border-radius: 4px; margin-right: 8px; position: relative;
+        }
+        .checkbox-container input:checked ~ .checkmark { background-color: #f59e0b; }
+        .checkmark:after {
+            content: ""; position: absolute; display: none; left: 6px; top: 2px;
+            width: 5px; height: 10px; border: solid white; border-width: 0 2px 2px 0; transform: rotate(45deg);
+        }
+        .checkbox-container input:checked ~ .checkmark:after { display: block; }
+
+        #confirm-modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 3000;
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(10px);
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+        }
+    </style>
+</head>
+<body class="p-4">
+
+    <div id="main-monitor" class="w-full max-w-lg flex flex-col space-y-3">
+        <div class="text-center mb-2">
+            <h1 class="text-3xl font-black tracking-tighter uppercase leading-none italic">
+                QUẢN LÝ <span class="text-orange-500">VỐN</span>
+            </h1>
+            <div class="flex items-center justify-center gap-2 text-[10px] font-black text-slate-500 tracking-widest uppercase mt-2">
+                <span id="sync-dot" class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+                <span id="last-update">CONNECTING...</span>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+            <div class="glass-card p-5 border-b-8 border-orange-500 flex flex-col items-center">
+                <span class="stat-label">Giá BTC</span>
+                <div id="btc-price" class="stat-value-giant text-white">$0,000</div>
+            </div>
+            <div class="glass-card p-5 border-b-8 border-blue-500 flex flex-col items-center">
+                <span class="stat-label">AVG Price</span>
+                <div id="main-avg-price" class="stat-value-giant text-blue-300">$0,000</div>
+            </div>
+        </div>
+
+        <div class="glass-card p-5 border-b-8 border-emerald-500 shadow-2xl">
+            <div class="flex items-center justify-between">
+                <div class="flex-1 flex flex-col items-center">
+                    <span class="stat-label">Lãi/Lỗ %</span>
+                    <div id="profit-percent" class="stat-value-giant text-green-500">+0.00%</div>
+                </div>
+                <div class="divider mx-4"></div>
+                <div class="flex-1 flex flex-col items-center">
+                    <span class="stat-label">Lãi (USD)</span>
+                    <div id="profit-usd" class="stat-value-giant text-blue-400">$0.000</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="glass-card p-5 border-b-8 border-yellow-500 shadow-2xl relative">
+            <div class="grid grid-cols-2 items-center text-center">
+                <div class="flex flex-col items-center overflow-hidden px-2">
+                    <span class="stat-label">Số dư BTC</span>
+                    <div id="btc-balance-display" class="font-black text-yellow-500 text-lg tracking-tighter truncate w-full">0.000000000</div>
+                    <div class="flex flex-col mt-2">
+                        <div id="spent-on-btc" class="text-[9px] font-bold uppercase text-blue-300">Vốn mua: $0.000</div>
+                        <div id="balance-label" class="text-[9px] font-bold uppercase text-slate-500">Giá trị thực: $0.000</div>
+                    </div>
+                </div>
+                <div class="flex flex-col items-center">
+                    <span class="stat-label">USDT Còn Lại</span>
+                    <div id="remaining-usdt-display" class="stat-value-large text-purple-400">$0.000</div>
+                </div>
+            </div>
+            <div class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 divider"></div>
+        </div>
+
+        <div class="glass-card p-5 border-b-8 border-pink-500 shadow-2xl relative">
+            <div class="grid grid-cols-2 items-center text-center">
+                <div class="flex flex-col items-center">
+                    <span class="stat-label">Tổng Vốn Nạp</span>
+                    <div id="total-vnd-display" class="stat-value-large text-pink-400">0đ</div>
+                </div>
+                <div class="flex flex-col items-center">
+                    <span class="stat-label">Tổng USDT</span>
+                    <div id="total-usdt-display" class="stat-value-large text-emerald-400">$0.000</div>
+                </div>
+            </div>
+            <div class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 divider"></div>
+        </div>
+
+        <!-- Nút đặc biệt với icon SVG -->
+        <div onclick="toggleDCATool(true)" class="glass-card p-5 border-b-8 border-red-600 flex flex-col items-center justify-center active:scale-95 transition-transform cursor-pointer shadow-lg">
+            <div class="flex items-center gap-4">
+                <div class="skull-float text-red-500">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="12" r="1"/><circle cx="15" cy="12" r="1"/><path d="M8 20v2h8v-2"/><path d="M12 2v2"/><path d="M7 2h10"/><path d="M12 4a8 8 0 0 0-8 8v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4a8 8 0 0 0-8-8z"/></svg>
+                </div>
+                <div class="flex flex-col items-center">
+                    <span class="stat-label text-red-500 mb-0">Chế độ đặc biệt</span>
+                    <div class="text-[10px] font-black text-slate-500 uppercase tracking-widest italic">Open Tool</div>
+                </div>
+                <div class="skull-float text-red-500" style="animation-delay: 0.5s;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="12" r="1"/><circle cx="15" cy="12" r="1"/><path d="M8 20v2h8v-2"/><path d="M12 2v2"/><path d="M7 2h10"/><path d="M12 4a8 8 0 0 0-8 8v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4a8 8 0 0 0-8-8z"/></svg>
+                </div>
+            </div>
+        </div>
+
+        <div class="text-center pt-2">
+            <p class="text-[8px] font-bold text-slate-600 uppercase tracking-[0.3em] opacity-50">SUPREME MONITORING v3.2</p>
+        </div>
+    </div>
+
+    <div id="dca-tool-overlay">
+        <!-- Đăng nhập -->
+        <div id="login-screen" class="fixed inset-0 z-[1100] bg-[#0b0f1a] flex items-center justify-center p-6">
+            <div class="glass-card w-full max-sm p-8 border-t-4 border-orange-500 shadow-2xl">
+                <div class="text-center mb-8">
+                    <h2 class="text-2xl font-black uppercase">TOOL <span class="text-orange-500">DCA BTC</span></h2>
+                    <p class="text-slate-500 text-[10px] font-bold mt-1 uppercase">Đăng nhập để tiếp tục</p>
+                </div>
+                <div class="space-y-4">
+                    <input type="text" id="login-user" class="input-field" placeholder="Username">
+                    <input type="password" id="login-pass" class="input-field" placeholder="Password">
+                    <label class="checkbox-container">
+                        <input type="checkbox" id="remember-me">
+                        <span class="checkmark"></span> Ghi nhớ đăng nhập
+                    </label>
+                    <button onclick="handleLogin()" class="w-full py-4 rounded-xl btn-primary">Đăng nhập</button>
+                    <button onclick="toggleDCATool(false)" class="w-full text-xs font-bold text-slate-500 uppercase mt-2">Quay lại Monitor</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Giao diện chính của Tool -->
+        <div id="main-app" class="hidden max-w-6xl mx-auto pb-24">
+            <!-- Header được thêm padding top để tránh tai thỏ -->
+            <header class="mb-8 flex flex-col sm:flex-row justify-between items-center gap-4 pt-4">
+                <div class="flex items-center gap-4">
+                    <button onclick="toggleDCATool(false)" class="bg-slate-800 p-2 rounded-lg text-slate-400 active:scale-90">◀</button>
+                    <h1 class="text-2xl sm:text-3xl font-black italic">BTC <span class="text-orange-500 italic uppercase">DCA TRACKER</span></h1>
+                </div>
+                <div class="flex gap-2">
+                    <button id="undo-btn" onclick="confirmAction('undo')" class="bg-slate-800 text-slate-400 px-4 py-2 rounded-xl text-xs font-black border border-slate-700" disabled>QUAY LẠI (0)</button>
+                    <button onclick="syncFromDrive()" class="bg-orange-500/10 text-orange-500 px-4 py-2 rounded-xl border border-orange-500/30">🔄</button>
+                    <button onclick="handleLogout()" class="bg-red-900/20 text-red-500 px-4 py-2 rounded-xl font-black text-xs">LOGOUT</button>
+                </div>
+            </header>
+
+            <!-- Form Nhập -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                <!-- Nạp USDT -->
+                <div class="glass-card p-4 border-t-4 border-purple-500 space-y-2">
+                    <h3 class="text-xs font-black uppercase text-purple-400">💎 Nạp USDT</h3>
+                    <input type="date" id="deposit-date" class="input-field">
+                    <input type="number" id="deposit-vnd" placeholder="Vốn VND" class="input-field">
+                    <input type="number" id="deposit-usdt" placeholder="Số USDT" class="input-field">
+                    <button onclick="submitData('deposit')" class="w-full py-2 bg-purple-600 rounded-xl text-xs font-black uppercase">Xác nhận</button>
+                </div>
+                <!-- Mua BTC -->
+                <div class="glass-card p-4 border-t-4 border-green-500 space-y-2">
+                    <h3 class="text-xs font-black uppercase text-green-400">🟢 Mua BTC</h3>
+                    <input type="date" id="buy-date" class="input-field">
+                    <div class="grid grid-cols-2 gap-2">
+                        <input type="number" id="buy-amount" placeholder="Số BTC" class="input-field" oninput="autoCalcPrice('buy')">
+                        <input type="number" id="buy-price" placeholder="Giá mua" class="input-field">
+                    </div>
+                    <input type="number" id="buy-cost" placeholder="Tổng USD" class="input-field" oninput="autoCalcPrice('buy')">
+                    <button onclick="submitData('buy')" class="w-full py-2 btn-primary rounded-xl text-xs uppercase">Xác nhận</button>
+                </div>
+                <!-- Bán BTC -->
+                <div class="glass-card p-4 border-t-4 border-orange-500 space-y-2">
+                    <h3 class="text-xs font-black uppercase text-orange-400">🟠 Bán BTC</h3>
+                    <input type="date" id="sell-date" class="input-field">
+                    <div class="grid grid-cols-2 gap-2">
+                        <input type="number" id="sell-amount" placeholder="Số BTC" class="input-field" oninput="autoCalcPrice('sell')">
+                        <input type="number" id="sell-price" placeholder="Giá bán" class="input-field">
+                    </div>
+                    <input type="number" id="sell-cost" placeholder="Thu về USD" class="input-field" oninput="autoCalcPrice('sell')">
+                    <button onclick="submitData('sell')" class="w-full py-2 btn-primary rounded-xl text-xs uppercase">Xác nhận</button>
+                </div>
+                <!-- Phí Rút -->
+                <div class="glass-card p-4 border-t-4 border-red-500 space-y-2">
+                    <h3 class="text-xs font-black uppercase text-red-400">🔴 Phí Rút</h3>
+                    <input type="date" id="withdraw-date" class="input-field">
+                    <input type="number" id="withdraw-amount" placeholder="Số BTC phí" class="input-field">
+                    <button onclick="submitData('withdraw')" class="w-full py-2 bg-red-600 rounded-xl text-xs font-black uppercase mt-4">Xác nhận</button>
+                </div>
+            </div>
+
+            <!-- Bảng Lịch Sử -->
+            <div class="glass-card overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs">
+                        <thead class="bg-slate-800 text-slate-500 text-[10px] font-black uppercase">
+                            <tr>
+                                <th class="p-4">Ngày</th>
+                                <th class="p-4 text-center">Loại</th>
+                                <th class="p-4 text-right">BTC / VND</th>
+                                <th class="p-4 text-right">USDT / Giá</th>
+                                <th class="p-4"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-body" class="divide-y divide-slate-800"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Xác Nhận -->
+    <div id="confirm-modal" class="flex">
+        <div class="glass-card w-full max-w-xs p-6 border-t-4 border-red-500 text-center space-y-4">
+            <div class="flex justify-center">
+                <div class="w-12 h-12 rounded-full bg-red-500/20 flex items-center justify-center text-red-500 mb-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                </div>
+            </div>
+            <h2 class="text-lg font-black uppercase" id="confirm-title">XÁC NHẬN</h2>
+            <p class="text-slate-400 text-xs font-bold leading-relaxed" id="confirm-msg">Xác nhận thực hiện hành động?</p>
+            <div class="grid grid-cols-2 gap-3 pt-2">
+                <button onclick="closeConfirm(false)" class="py-3 rounded-xl bg-slate-800 text-slate-400 font-black text-[10px] uppercase border border-slate-700">Hủy bỏ</button>
+                <button onclick="closeConfirm(true)" class="py-3 rounded-xl bg-red-600 text-white font-black text-[10px] uppercase shadow-lg shadow-red-900/40">Đồng ý</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Thông báo Toast -->
+    <div id="toast" class="pointer-events-none">
+        <div class="bg-slate-900 border border-slate-700 px-6 py-3 rounded-2xl flex items-center gap-3 shadow-2xl">
+            <span id="toast-icon"></span><span id="toast-message" class="text-xs font-bold"></span>
+        </div>
+    </div>
+
+    <script>
+        const scriptUrl = "https://script.google.com/macros/s/AKfycbwRWi1k6MnfGyuDkPUD1qR-KXeBQZD-2RwFTYKWdn_g_MJ5BZNNZxYoR2Lt7blMQC8g/exec";
+        
+        let btcData = { entries: [], currentPrice: 0 };
+        let entries = [];
+        let historyStack = [];
+        const MAX_UNDO = 3;
+        let pendingAction = null;
+
+        // --- TÍNH NĂNG TỰ ĐỘNG ---
+        function autoCalcPrice(type) {
+            const amount = parseFloat(document.getElementById(`${type}-amount`).value) || 0;
+            const cost = parseFloat(document.getElementById(`${type}-cost`).value) || 0;
+            const priceField = document.getElementById(`${type}-price`);
+            
+            if (amount > 0 && cost > 0) {
+                const calculatedPrice = Math.round(cost / amount);
+                priceField.value = calculatedPrice;
+            } else {
+                priceField.value = '';
+            }
+        }
+
+        // --- MONITOR LOGIC ---
+        async function fetchMonitorData() {
+            try {
+                const res = await fetch(scriptUrl);
+                const data = await res.json();
+                btcData.entries = Array.isArray(data) ? data : [];
+                calculateMonitorProfit();
+                if (document.getElementById('dca-tool-overlay').style.display === 'block') {
+                    entries = btcData.entries;
+                    updateUI();
+                }
+            } catch (e) { console.error(e); }
+        }
+
+        function fetchBinancePrice() {
+            fetch('https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT')
+                .then(res => res.json())
+                .then(data => {
+                    btcData.currentPrice = parseFloat(data.price);
+                    document.getElementById('btc-price').innerText = '$' + btcData.currentPrice.toLocaleString(undefined, {minimumFractionDigits: 0});
+                    document.getElementById('last-update').innerText = 'SYNC: ' + new Date().toLocaleTimeString();
+                    calculateMonitorProfit();
+                });
+        }
+
+        function calculateMonitorProfit() {
+            if (!btcData.entries.length) return;
+            let currentBalBtc = 0, totalBuyBtc = 0, totalBuyCost = 0, totalInvestedCurrent = 0, 
+                totalDepositUsdt = 0, totalSpentOnOrders = 0, totalDepositVnd = 0;
+
+            btcData.entries.forEach(e => {
+                const type = (e.type || "").toLowerCase().trim();
+                if (type === 'deposit') {
+                    totalDepositVnd += (parseFloat(e.vnd) || 0);
+                    totalDepositUsdt += (parseFloat(e.usdt) || parseFloat(e.amount) || 0);
+                }
+                if (type === 'buy') {
+                    currentBalBtc += (parseFloat(e.amount) || 0);
+                    totalBuyBtc += (parseFloat(e.amount) || 0);
+                    totalBuyCost += (parseFloat(e.cost) || 0);
+                    totalInvestedCurrent += (parseFloat(e.cost) || 0);
+                    totalSpentOnOrders += (parseFloat(e.cost) || 0);
+                }
+                if (type === 'sell') {
+                    currentBalBtc -= (parseFloat(e.amount) || 0);
+                    totalInvestedCurrent -= (parseFloat(e.cost) || 0);
+                    totalSpentOnOrders -= (parseFloat(e.cost) || 0);
+                }
+                if (type === 'withdraw') {
+                    currentBalBtc -= (parseFloat(e.amount) || 0);
+                }
+            });
+
+            document.getElementById('total-vnd-display').innerText = Math.round(totalDepositVnd).toLocaleString() + 'đ';
+            document.getElementById('total-usdt-display').innerText = '$' + totalDepositUsdt.toLocaleString(undefined, {minimumFractionDigits: 3});
+            document.getElementById('remaining-usdt-display').innerText = '$' + (totalDepositUsdt - totalSpentOnOrders).toLocaleString(undefined, {minimumFractionDigits: 3});
+            document.getElementById('btc-balance-display').innerText = currentBalBtc.toFixed(9);
+            document.getElementById('spent-on-btc').innerText = `Vốn mua: $${totalInvestedCurrent.toLocaleString()}`;
+
+            if (btcData.currentPrice > 0) {
+                const avgPrice = totalBuyBtc > 0 ? (totalBuyCost / totalBuyBtc) : 0;
+                const valuation = currentBalBtc * btcData.currentPrice;
+                const profit = valuation - totalInvestedCurrent;
+                const percent = totalInvestedCurrent > 0 ? (profit / totalInvestedCurrent) * 100 : 0;
+                
+                document.getElementById('main-avg-price').innerText = '$' + Math.round(avgPrice).toLocaleString();
+                document.getElementById('profit-percent').innerText = (percent >= 0 ? '+' : '') + percent.toFixed(2) + '%';
+                document.getElementById('profit-usd').innerText = (profit >= 0 ? '$' : '-$') + Math.abs(profit).toLocaleString();
+                document.getElementById('profit-percent').className = `stat-value-giant ${profit >= 0 ? 'text-green-500' : 'text-red-500'}`;
+                document.getElementById('balance-label').innerText = `Giá trị thực: $${valuation.toLocaleString()}`;
+                document.getElementById('balance-label').className = `text-[9px] font-bold uppercase ${profit >= 0 ? 'text-green-400' : 'text-red-400'}`;
+            }
+        }
+
+        // --- TOOL DCA LOGIC ---
+        const AUTH_USER = "Hoaibaobtc";
+        const AUTH_PASS = "admin";
+
+        function saveHistory() {
+            historyStack.push(JSON.stringify(entries));
+            if (historyStack.length > MAX_UNDO) historyStack.shift();
+            updateUndoButton();
+        }
+
+        function updateUndoButton() {
+            const btn = document.getElementById('undo-btn');
+            if(btn) {
+                btn.innerText = `QUAY LẠI (${historyStack.length})`;
+                btn.disabled = historyStack.length === 0;
+            }
+        }
+
+        function toggleDCATool(show) {
+            document.getElementById('dca-tool-overlay').style.display = show ? 'block' : 'none';
+            if(show) checkAuth();
+        }
+
+        function checkAuth() {
+            if (localStorage.getItem('btc_dca_auth') === 'true' || sessionStorage.getItem('btc_dca_session') === 'true') {
+                showApp();
+            } else {
+                document.getElementById('login-screen').classList.remove('hidden');
+                document.getElementById('main-app').classList.add('hidden');
+            }
+        }
+
+        function handleLogin() {
+            const user = document.getElementById('login-user').value;
+            const pass = document.getElementById('login-pass').value;
+            if (user === AUTH_USER && pass === AUTH_PASS) {
+                if (document.getElementById('remember-me').checked) localStorage.setItem('btc_dca_auth', 'true');
+                else sessionStorage.setItem('btc_dca_session', 'true');
+                showApp();
+            } else showToast("Sai thông tin đăng nhập", "error");
+        }
+
+        function handleLogout() {
+            localStorage.removeItem('btc_dca_auth');
+            sessionStorage.removeItem('btc_dca_session');
+            document.getElementById('main-app').classList.add('hidden');
+            document.getElementById('login-screen').classList.remove('hidden');
+        }
+
+        function showApp() {
+            document.getElementById('login-screen').classList.add('hidden');
+            document.getElementById('main-app').classList.remove('hidden');
+            const local = localStorage.getItem('btc_drive_data');
+            if(local) { entries = JSON.parse(local); updateUI(); }
+            syncFromDrive();
+            const today = new Date().toISOString().split('T')[0];
+            document.querySelectorAll('input[type="date"]').forEach(i => i.value = today);
+        }
+
+        async function syncToDrive() {
+            try {
+                await fetch(scriptUrl, { method: 'POST', mode: 'no-cors', body: JSON.stringify(entries) });
+                fetchMonitorData();
+            } catch (e) {}
+        }
+
+        async function syncFromDrive() {
+            try {
+                const res = await fetch(scriptUrl);
+                const data = await res.json();
+                if(Array.isArray(data)) {
+                    entries = data;
+                    localStorage.setItem('btc_drive_data', JSON.stringify(entries));
+                    updateUI();
+                }
+            } catch (e) {}
+        }
+
+        function submitData(type) {
+            const dateInput = document.getElementById(`${type}-date`);
+            if (!dateInput.value) {
+                showToast("Vui lòng chọn ngày", "error");
+                return;
+            }
+
+            let entry = { id: Date.now(), date: dateInput.value, type };
+            
+            if (type === 'deposit') {
+                const vndInput = document.getElementById('deposit-vnd');
+                const usdtInput = document.getElementById('deposit-usdt');
+                if (!vndInput.value || !usdtInput.value) {
+                    showToast("Nhập đầy đủ VND và USDT", "error");
+                    return;
+                }
+                entry.vnd = parseFloat(vndInput.value) || 0;
+                entry.usdt = parseFloat(usdtInput.value) || 0;
+                vndInput.value = ''; usdtInput.value = '';
+            } else if (type === 'withdraw') {
+                const withdrawInput = document.getElementById('withdraw-amount');
+                if (!withdrawInput.value) {
+                    showToast("Nhập số BTC phí rút", "error");
+                    return;
+                }
+                entry.amount = parseFloat(withdrawInput.value) || 0;
+                withdrawInput.value = '';
+            } else {
+                const amountInput = document.getElementById(`${type}-amount`);
+                const priceInput = document.getElementById(`${type}-price`);
+                const costInput = document.getElementById(`${type}-cost`);
+                if (!amountInput.value || !priceInput.value || !costInput.value) {
+                    showToast("Nhập đầy đủ thông tin", "error");
+                    return;
+                }
+                entry.amount = parseFloat(amountInput.value) || 0;
+                entry.price = parseFloat(priceInput.value) || 0;
+                entry.cost = parseFloat(costInput.value) || 0;
+                amountInput.value = ''; priceInput.value = ''; costInput.value = '';
+            }
+
+            saveHistory();
+            entries.push(entry);
+            updateUI(); syncToDrive();
+            showToast("Đã lưu dữ liệu", "success");
+        }
+
+        function updateUI() {
+            const tbody = document.getElementById('table-body');
+            if (!tbody) return;
+            tbody.innerHTML = '';
+            [...entries].sort((a,b) => new Date(b.date) - new Date(a.date)).forEach(e => {
+                let col1 = '-', col2 = '-', colorClass = 'text-slate-400';
+                const type = (e.type || "").toLowerCase().trim();
+                if (type === 'buy') { colorClass = 'text-green-400'; col1 = '+' + (e.amount || 0).toFixed(8); col2 = '$' + (e.price || 0).toLocaleString(); }
+                else if (type === 'sell') { colorClass = 'text-orange-400'; col1 = '-' + (e.amount || 0).toFixed(8); col2 = '$' + (e.price || 0).toLocaleString(); }
+                else if (type === 'deposit') { colorClass = 'text-purple-400'; col1 = Math.round(e.vnd || 0).toLocaleString() + 'đ'; col2 = '$' + (e.usdt || 0).toLocaleString(); }
+                else if (type === 'withdraw') { colorClass = 'text-red-400'; col1 = '-' + (e.amount || 0).toFixed(8); col2 = 'Phí Rút'; }
+                tbody.innerHTML += `
+                    <tr class="border-b border-slate-800/50">
+                        <td class="p-4 text-slate-400">${e.date}</td>
+                        <td class="p-4 text-center font-black ${colorClass}">${e.type.toUpperCase()}</td>
+                        <td class="p-4 text-right font-bold ${colorClass}">${col1}</td>
+                        <td class="p-4 text-right text-slate-300 font-medium">${col2}</td>
+                        <td class="p-4 text-right">
+                            <button onclick="confirmAction('delete', ${e.id})" class="bg-red-500/10 text-red-500 w-8 h-8 rounded-lg flex items-center justify-center ml-auto active:scale-90">×</button>
+                        </td>
+                    </tr>
+                `;
+            });
+            updateUndoButton();
+        }
+
+        function confirmAction(type, id = null) {
+            const modal = document.getElementById('confirm-modal');
+            modal.style.display = 'flex';
+            pendingAction = { type, id };
+            document.getElementById('confirm-title').innerText = type === 'undo' ? "QUAY LẠI" : "XOÁ DỮ LIỆU";
+            document.getElementById('confirm-msg').innerText = type === 'undo' ? "Khôi phục trạng thái trước đó?" : "Bạn có chắc chắn muốn xoá mục này?";
+        }
+
+        function closeConfirm(isConfirmed) {
+            document.getElementById('confirm-modal').style.display = 'none';
+            if(isConfirmed && pendingAction) {
+                if(pendingAction.type === 'delete') {
+                    saveHistory();
+                    entries = entries.filter(e => e.id !== pendingAction.id);
+                    updateUI(); syncToDrive();
+                } else if(pendingAction.type === 'undo') {
+                    entries = JSON.parse(historyStack.pop());
+                    updateUI(); syncToDrive();
+                    showToast("Đã khôi phục", "success");
+                }
+            }
+            pendingAction = null;
+        }
+
+        function showToast(m, type) {
+            const t = document.getElementById('toast');
+            document.getElementById('toast-message').innerText = m;
+            document.getElementById('toast-icon').innerText = type === 'success' ? '✅' : '❌';
+            t.classList.add('show');
+            setTimeout(() => t.classList.remove('show'), 3000);
+        }
+
+        window.onload = () => {
+            fetchMonitorData();
+            fetchBinancePrice();
+            setInterval(fetchBinancePrice, 3000);
+            setInterval(fetchMonitorData, 15000);
+        };
+    </script>
+</body>
+</html>
